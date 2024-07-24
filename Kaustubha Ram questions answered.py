@@ -59,7 +59,7 @@ limit 1;
 """
 most_common_pizza=execute_query(query4,conn)
 print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
+print(f"Most Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
 print("")
 
 # Q5:   The top 5 most ordered pizza types along their quantities.
@@ -72,7 +72,7 @@ limit 5;
 """
 top5_most_common_pizza=execute_query(query5,conn)
 print("Question5: ")
-print("5 Most Common Pizza: :")
+print("5 Most Common Pizza: ")
 for x in top5_most_common_pizza:
     print(f"{x[0]} was ordered {x[1]} times")
 print("")
@@ -84,103 +84,117 @@ inner join pizza p on pt.pizza_type_id=p.pizza_type_id
 inner join order_details od on p.pizza_id=od.pizza_id
 group by pt.pizza_type_id ;
 """
-top5_most_common_pizza=execute_query(query6,conn)
+quantity_category=execute_query(query6,conn)
 print("Question6: ")
-for x in top5_most_common_pizza:
-    print(f"{x[0]} was ordered {x[1]} times")
+for x in quantity_category:
+    print(f"{x[0]}: {x[1]}")
 print("")
 
 # Q7:   The distribution of orders by hours of the day.
-query4="""
-select name,sum(od.quantity) from pizza_type pt
-inner join pizza p on pt.pizza_type_id=p.pizza_type_id
-inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
+query7="""
+select EXTRACT(HOUR FROM time::time) as hour,count(*) from
+order_details od inner join orders o on od.order_id=od.order_details_id
+group by hour
+order by hour;
 """
-most_common_pizza=execute_query(query4,conn)
-print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
-print("")
-'''
-# Q8:   The category-wise distribution of pizzas.
-query4="""
-select name,sum(od.quantity) from pizza_type pt
-inner join pizza p on pt.pizza_type_id=p.pizza_type_id
-inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
-"""
-most_common_pizza=execute_query(query4,conn)
-print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
+hourly_distribution=execute_query(query7,conn)
+print("Question7: ")
+for x in hourly_distribution:
+    print(f"{x[0]} hours: {x[1]} orders")
 print("")
 
-# Q9:   The average number of pizzas ordered per day.
-query4="""
-select name,sum(od.quantity) from pizza_type pt
+# Q8:   The category-wise distribution of pizzas.
+query8="""
+select pt.pizza_type_id,count(*) from pizza_type pt
 inner join pizza p on pt.pizza_type_id=p.pizza_type_id
 inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
+group by pt.pizza_type_id ;
 """
-most_common_pizza=execute_query(query4,conn)
-print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
+quantity_category=execute_query(query8,conn)
+print("Question8: ")
+for x in quantity_category:
+    print(f"{x[0]} was ordered {x[1]} times")
+print("")
+
+
+# Q9:   The average number of pizzas ordered per day.
+query9 = """
+SELECT AVG(daily_orders.total_quantity) AS avg_pizzas_per_day
+FROM (
+    SELECT date, SUM(od.quantity) AS total_quantity
+    FROM order_details od
+    JOIN orders o ON od.order_id = o.order_id
+    GROUP BY date
+) AS daily_orders;
+"""
+average_pizzas_per_day=execute_query(query9,conn)
+print("Question9: ")
+print("Average number of pizzas ordered per day:", average_pizzas_per_day[0][0])
 print("")
 
 # Q10:   Top 3 most ordered pizza type base on revenue.
-query4="""
-select name,sum(od.quantity) from pizza_type pt
-inner join pizza p on pt.pizza_type_id=p.pizza_type_id
-inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
+query10="""
+SELECT pt.name, SUM(od.quantity * p.price) AS total_revenue
+from order_details od inner join pizza p on p.pizza_id=od.pizza_id
+inner join pizza_type pt ON p.pizza_type_id = pt.pizza_type_id
+GROUP BY pt.name
+ORDER BY total_revenue DESC
+LIMIT 3;
+;
 """
-most_common_pizza=execute_query(query4,conn)
-print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
+top3_most_ordered_pizza=execute_query(query10,conn)
+print("Question10: ")
+print("3 Most ordered pizza type base on revenue: ")
+for x in top3_most_ordered_pizza:
+    print(f"{x[0]}: {x[1]}")
 print("")
 
+
 # Q11:   The percentage contribution of each pizza type to revenue.
-query4="""
-select name,sum(od.quantity) from pizza_type pt
-inner join pizza p on pt.pizza_type_id=p.pizza_type_id
-inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
+query11="""
+select pt.name,(sum(od.quantity * p.price)/(select sum(od.quantity*p.price)
+from order_details od  inner join pizza p on p.pizza_id=od.pizza_id)*100) as revenue_percentage
+FROM order_details od
+JOIN pizza p ON od.pizza_id = p.pizza_id
+JOIN pizza_type pt ON p.pizza_type_id = pt.pizza_type_id
+GROUP BY pt.name
+ORDER BY revenue_percentage DESC;
 """
-most_common_pizza=execute_query(query4,conn)
-print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
+percentage_contribution=execute_query(query11,conn)
+print("Question11: ")
+print("Percentage contribution of each pizza: ")
+for x in percentage_contribution:
+    print(f"{x[0]}: {round(x[1],2)}%")
 print("")
 
 # Q12:   The cumulative revenue generated over time.
-query4="""
-select name,sum(od.quantity) from pizza_type pt
-inner join pizza p on pt.pizza_type_id=p.pizza_type_id
-inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
+query12="""
+select date,sum(sum(od.quantity * p.price)) over (order by date) as cummulative_revenue
+from order_details od
+inner join pizza p on od.pizza_id=p.pizza_id
+inner join orders o on od.order_id=o.order_id
+group by date
+order by date;
 """
-most_common_pizza=execute_query(query4,conn)
-print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
+cumulative_revenue_over_time = execute_query(query12, conn)
+print("Question12: ")
+print("Cumulative revenue generated over time:")
+for x in cumulative_revenue_over_time:
+    print(f"{x[0]}: {round(x[1],2)}")
 print("")
 
 # Q13:   The top 3 most ordered pizza type based on revenue for each pizza category.
-query4="""
+query13="""
 select name,sum(od.quantity) from pizza_type pt
 inner join pizza p on pt.pizza_type_id=p.pizza_type_id
 inner join order_details od on p.pizza_id=od.pizza_id
 group by name,price order by sum(od.quantity) desc
 limit 1;
 """
-most_common_pizza=execute_query(query4,conn)
-print("Question4: ")
-print(f"Mot Common Pizza:{most_common_pizza[0][0]} and it was ordered {most_common_pizza[0][1]} times")
+top_3_pizza_types_by_category=execute_query(query13,conn)
+print("Question13: ")
+print("Top 3 most ordered pizza types based on revenue for each pizza category:", top_3_pizza_types_by_category)
 print("")
 # Close the cursor and connection
 cur.close()
 conn.close()
-'''
