@@ -185,15 +185,23 @@ print("")
 
 # Q13:   The top 3 most ordered pizza type based on revenue for each pizza category.
 query13="""
-select name,sum(od.quantity) from pizza_type pt
-inner join pizza p on pt.pizza_type_id=p.pizza_type_id
-inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
+select category,total_revenue from
+(select pt.category,sum(od.quantity*p.price) as total_revenue,
+row_number() over (partition by pt.category order by sum(od.quantity*p.price)desc) as rank
+from order_details od
+inner join pizza p on od.pizza_id=p.pizza_id
+inner join pizza_type pt on p.pizza_type_id=pt.pizza_type_id
+group by pt.category)
+as ranked_pizzas
+where rank<=3
+order by total_revenue desc
+limit 3;
 """
 top_3_pizza_types_by_category=execute_query(query13,conn)
 print("Question13: ")
-print("Top 3 most ordered pizza types based on revenue for each pizza category:", top_3_pizza_types_by_category)
+print("Top 3 most ordered pizza types based on revenue for each pizza category:")
+for x in top_3_pizza_types_by_category:
+    print(f"{x[0]}: {x[1]}")
 print("")
 # Close the cursor and connection
 cur.close()
