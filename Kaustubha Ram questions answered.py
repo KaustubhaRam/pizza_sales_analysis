@@ -51,11 +51,12 @@ print("")
 
 # Q4:   The most common pizza size ordered.
 query4="""
-select name,sum(od.quantity) from pizza_type pt
-inner join pizza p on pt.pizza_type_id=p.pizza_type_id
-inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
-limit 1;
+SELECT size, COUNT(*) AS size_count
+FROM order_details od
+JOIN pizza p ON od.pizza_id = p.pizza_id
+GROUP BY size
+ORDER BY size_count DESC
+LIMIT 1;
 """
 most_common_pizza=execute_query(query4,conn)
 print("Question4: ")
@@ -64,10 +65,10 @@ print("")
 
 # Q5:   The top 5 most ordered pizza types along their quantities.
 query5="""
-select name,sum(od.quantity) from pizza_type pt
+select pt.pizza_type_id,sum(od.quantity) from pizza_type pt
 inner join pizza p on pt.pizza_type_id=p.pizza_type_id
 inner join order_details od on p.pizza_id=od.pizza_id
-group by name,price order by sum(od.quantity) desc
+group by pt.pizza_type_id order by sum(od.quantity) desc
 limit 5;
 """
 top5_most_common_pizza=execute_query(query5,conn)
@@ -94,8 +95,7 @@ print("")
 query7="""
 select EXTRACT(HOUR FROM time::time) as hour,count(*) from
 order_details od inner join orders o on od.order_id=od.order_details_id
-group by hour
-order by hour;
+group by hour order by hour;
 """
 hourly_distribution=execute_query(query7,conn)
 print("Question7: ")
@@ -134,13 +134,13 @@ print("")
 
 # Q10:   Top 3 most ordered pizza type base on revenue.
 query10="""
-SELECT pt.name, SUM(od.quantity * p.price) AS total_revenue
-from order_details od inner join pizza p on p.pizza_id=od.pizza_id
-inner join pizza_type pt ON p.pizza_type_id = pt.pizza_type_id
-GROUP BY pt.name
+SELECT pt.pizza_type_id, SUM(od.quantity * p.price) AS total_revenue
+FROM order_details od
+JOIN pizza p ON od.pizza_id = p.pizza_id
+JOIN pizza_type pt ON p.pizza_type_id = pt.pizza_type_id
+GROUP BY pt.pizza_type_id
 ORDER BY total_revenue DESC
 LIMIT 3;
-;
 """
 top3_most_ordered_pizza=execute_query(query10,conn)
 print("Question10: ")
@@ -152,13 +152,12 @@ print("")
 
 # Q11:   The percentage contribution of each pizza type to revenue.
 query11="""
-select pt.name,(sum(od.quantity * p.price)/(select sum(od.quantity*p.price)
+select pt.pizza_type_id,(sum(od.quantity * p.price)/(select sum(od.quantity*p.price)
 from order_details od  inner join pizza p on p.pizza_id=od.pizza_id)*100) as revenue_percentage
 FROM order_details od
 JOIN pizza p ON od.pizza_id = p.pizza_id
 JOIN pizza_type pt ON p.pizza_type_id = pt.pizza_type_id
-GROUP BY pt.name
-ORDER BY revenue_percentage DESC;
+GROUP BY pt.pizza_type_id ORDER BY revenue_percentage DESC;
 """
 percentage_contribution=execute_query(query11,conn)
 print("Question11: ")
@@ -169,12 +168,16 @@ print("")
 
 # Q12:   The cumulative revenue generated over time.
 query12="""
-select date,sum(sum(od.quantity * p.price)) over (order by date) as cummulative_revenue
-from order_details od
-inner join pizza p on od.pizza_id=p.pizza_id
-inner join orders o on od.order_id=o.order_id
-group by date
-order by date;
+SELECT date, 
+       SUM(daily_revenue) OVER (ORDER BY date) AS cumulative_revenue
+FROM (
+    SELECT o.date, SUM(od.quantity * p.price) AS daily_revenue
+    FROM order_details od
+    JOIN pizza p ON od.pizza_id = p.pizza_id
+    JOIN orders o ON od.order_id = o.order_id
+    GROUP BY o.date
+) AS daily_revenue_totals
+ORDER BY date;
 """
 cumulative_revenue_over_time = execute_query(query12, conn)
 print("Question12: ")
